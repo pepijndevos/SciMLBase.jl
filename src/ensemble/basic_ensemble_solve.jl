@@ -1,3 +1,4 @@
+using Logging
 """
 $(TYPEDEF)
 """
@@ -60,6 +61,13 @@ function __solve(prob::AbstractEnsembleProblem,
         error("trajectories ÷ batch_size cannot be less than 1, got $num_batches")
     num_batches * batch_size != trajectories && (num_batches += 1)
 
+    if get(kwargs, :progress, false)
+        name = get(kwargs, :progress_name, "ODE")
+        for i in 1:trajectories
+            @logmsg(LogLevel(-1), "$name #$i", _id=Symbol("SciMLBase_$i"), progress=0)
+        end
+    end
+
     if num_batches == 1 && prob.reduction === DEFAULT_REDUCTION
         elapsed_time = @elapsed u = solve_batch(prob, alg, ensemblealg, 1:trajectories,
             pmap_batch_size; kwargs...)
@@ -97,7 +105,12 @@ function batch_func(i, prob, alg; kwargs...)
     _prob = prob.safetycopy ? deepcopy(prob.prob) : prob.prob
     new_prob = prob.prob_func(_prob, i, iter)
     rerun = true
-    x = prob.output_func(solve(new_prob, alg; kwargs...), i)
+
+    name = get(kwargs, :progress_name, "ODE")
+    progress_name = "$name #$i"
+    progress_id = Symbol("SciMLBase_$i")
+
+    x = prob.output_func(solve(new_prob, alg; progress_name, progress_id, kwargs...), i)
     if !(typeof(x) <: Tuple)
         rerun_warn()
         _x = (x, false)
@@ -109,7 +122,7 @@ function batch_func(i, prob, alg; kwargs...)
         iter += 1
         _prob = prob.safetycopy ? deepcopy(prob.prob) : prob.prob
         new_prob = prob.prob_func(_prob, i, iter)
-        x = prob.output_func(solve(new_prob, alg; kwargs...), i)
+        x = prob.output_func(solve(new_prob, alg; progress_name, progress_id, kwargs...), i)
         if !(typeof(x) <: Tuple)
             rerun_warn()
             _x = (x, false)
