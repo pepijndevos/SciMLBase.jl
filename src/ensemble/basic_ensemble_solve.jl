@@ -62,7 +62,7 @@ function __solve(prob::AbstractEnsembleProblem,
     num_batches * batch_size != trajectories && (num_batches += 1)
 
     if get(kwargs, :progress, false)
-        name = get(kwargs, :progress_name, "ODE")
+        name = get(kwargs, :progress_name, "Ensemble")
         for i in 1:trajectories
             @logmsg(LogLevel(-1), "$name #$i", _id=Symbol("SciMLBase_$i"), progress=0)
         end
@@ -106,7 +106,7 @@ function batch_func(i, prob, alg; kwargs...)
     new_prob = prob.prob_func(_prob, i, iter)
     rerun = true
 
-    name = get(kwargs, :progress_name, "ODE")
+    name = get(kwargs, :progress_name, "Ensemble")
     progress_name = "$name #$i"
     progress_id = Symbol("SciMLBase_$i")
 
