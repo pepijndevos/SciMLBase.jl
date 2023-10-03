@@ -32,7 +32,7 @@ end
 AggregateLogger(logger::AbstractLogger) = AggregateLogger(Dict{Symbol, Float64}(), ReentrantLock(), logger)
 
 function Logging.handle_message(l::AggregateLogger, level, message, _module, group, id, file, line; kwargs...)
-    if level == LogLevel(-1) && haskey(kwargs, :progress)
+    if convert(LogLevel, level) == LogLevel(-1) && haskey(kwargs, :progress)
         pr = kwargs[:progress]
         lock(l.lock)
         try
