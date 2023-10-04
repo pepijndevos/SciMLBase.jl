@@ -34,23 +34,26 @@ AggregateLogger(logger::AbstractLogger) = AggregateLogger(Dict{Symbol, Float64}(
 function Logging.handle_message(l::AggregateLogger, level, message, _module, group, id, file, line; kwargs...)
     if convert(LogLevel, level) == LogLevel(-1) && haskey(kwargs, :progress)
         pr = kwargs[:progress]
-        lock(l.lock)
-        try
-            if pr isa Number
-                l.progress[id] = pr
-            elseif pr == "done"
-                l.progress[id] = 1.0
+        if trylock(l.lock) || (pr == "done" && lock(l.lock)===nothing)
+            try
+                if pr isa Number
+                    l.progress[id] = pr
+                elseif pr == "done"
+                    l.progress[id] = 1.0
+                end
+                tot = sum(values(l.progress))/length(l.progress)
+                if tot>=1.0
+                    tot="done"
+                    empty!(l.progress)
+                end
+                id=:total
+                message="Total"
+                kwargs=merge(values(kwargs), (progress=tot,))
+            finally
+                unlock(l.lock)
             end
-            tot = sum(values(l.progress))/length(l.progress)
-            if tot>=1.0
-                tot="done"
-                empty!(l.progress)
-            end
-            id=:total
-            message="Total"
-            kwargs=merge(values(kwargs), (progress=tot,))
-        finally
-            unlock(l.lock)
+        else
+            return
         end
     end
     Logging.handle_message(l.logger, level, message, _module, group, id, file, line; kwargs...)
