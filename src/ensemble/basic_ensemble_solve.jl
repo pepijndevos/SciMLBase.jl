@@ -24,12 +24,13 @@ $(TYPEDEF)
 """
 struct EnsembleSerial <: BasicEnsembleAlgorithm end
 
-struct AggregateLogger{T<:AbstractLogger} <: AbstractLogger
+mutable struct AggregateLogger{T<:AbstractLogger} <: AbstractLogger
     progress::Dict{Symbol, Float64}
+    total::Float64
     lock::ReentrantLock
     logger::T
 end
-AggregateLogger(logger::AbstractLogger) = AggregateLogger(Dict{Symbol, Float64}(), ReentrantLock(), logger)
+AggregateLogger(logger::AbstractLogger) = AggregateLogger(Dict{Symbol, Float64}(), 0.0, ReentrantLock(), logger)
 
 function Logging.handle_message(l::AggregateLogger, level, message, _module, group, id, file, line; kwargs...)
     if convert(LogLevel, level) == LogLevel(-1) && haskey(kwargs, :progress)
@@ -42,6 +43,8 @@ function Logging.handle_message(l::AggregateLogger, level, message, _module, gro
                     l.progress[id] = 1.0
                 end
                 tot = sum(values(l.progress))/length(l.progress)
+                tot < 1.0 && isapprox(tot, l.total; atol=0.001) && return # less than 0.1% change
+                l.total = tot
                 if tot>=1.0
                     tot="done"
                     empty!(l.progress)
