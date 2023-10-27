@@ -83,8 +83,9 @@ struct SteadyStateProblem{uType, isinplace, P, F, K} <:
     @add_kwonly function SteadyStateProblem{iip}(f::AbstractODEFunction{iip},
         u0, p = NullParameters();
         kwargs...) where {iip}
+        _u0 = prepare_initial_state(u0)
         warn_paramtype(p)
-        new{typeof(u0), isinplace(f), typeof(p), typeof(f), typeof(kwargs)}(f, u0, p,
+        new{typeof(_u0), isinplace(f), typeof(p), typeof(f), typeof(kwargs)}(f, _u0, p,
             kwargs)
     end
 
@@ -122,5 +123,5 @@ $(SIGNATURES)
 Define a steady state problem from a standard ODE problem.
 """
 function SteadyStateProblem(prob::AbstractODEProblem)
-    SteadyStateProblem{isinplace(prob)}(prob.f, prob.u0, prob.p)
+    SteadyStateProblem{isinplace(prob)}(prob.f, prob.u0, prob.p; prob.kwargs...)
 end
